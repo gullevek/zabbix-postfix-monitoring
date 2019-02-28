@@ -55,6 +55,7 @@ chown zabbix.zabbix /var/local/zabbix
 ```
 
 The following files will be stored there
+
 | File | Description |
 | ---- | ----------- |
 | zabbix-postfix.logtail | logtail position information |
@@ -111,6 +112,7 @@ The script will try to fall back to the sudo style read in case all other option
 The file value_mapping/value_mapping_postfix.xml needs to be imported first in the "Administration>General>Value Mapping" Page
 
 The following templates exist
+
 | Template File | Description | Note |
 | ------------- | ----------- | ---- |
 | template_app_postfix_simple.xml | Template App Postfix Simple | |
