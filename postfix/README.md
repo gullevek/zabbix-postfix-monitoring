@@ -100,7 +100,7 @@ $DirCreateMode 0755
 $Umask 0022
 ```
 
-OR an additional line can be added to the sude zabbix file
+OR an additional line can be added to the sudo zabbix file
 ```
 zabbix ALL = (ALL) NOPASSWD: /usr/sbin/logtail -f /var/log/* -o *
 ```
@@ -111,12 +111,12 @@ The script will try to fall back to the sudo style read in case all other option
 
 The file value_mapping/value_mapping_postfix.xml needs to be imported first in the "Administration>General>Value Mapping" Page
 
-The following templates exist
+The following templates exists
 
 | Template File | Description | Note |
 | ------------- | ----------- | ---- |
 | template_app_postfix_simple.xml | Template App Postfix Simple | |
-| template_app_postfix_detail.xml | Template App Postfix Detail | Needs the simple tempalte imported first |
+| template_app_postfix_detail.xml | Template App Postfix Detail | Needs the simple template imported first |
 | template_app_postfix_mail_statistics.xml | Template App Postfix Mail Statistics | |
 
 ### All Macros in the Zabbix Templates
