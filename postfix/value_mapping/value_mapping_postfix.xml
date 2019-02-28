@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>4.0</version>
+    <date>2019-02-28T06:59:46Z</date>
+    <value_maps>
+        <value_map>
+            <name>Postfix status</name>
+            <mappings>
+                <mapping>
+                    <value>0</value>
+                    <newvalue>Down</newvalue>
+                </mapping>
+                <mapping>
+                    <value>1</value>
+                    <newvalue>Up</newvalue>
+                </mapping>
+                <mapping>
+                    <value>2</value>
+                    <newvalue>Invalid Syslog Name</newvalue>
+                </mapping>
+                <mapping>
+                    <value>3</value>
+                    <newvalue>Other Error</newvalue>
+                </mapping>
+            </mappings>
+        </value_map>
+    </value_maps>
+</zabbix_export>
