@@ -2,7 +2,7 @@
 
 # AUTHOR: Clemens Schwaighofer
 # DATE  : 2019/2/21
-# UPDATE: 2019/2/21
+# UPDATE: 2019/2/22
 # DESC  : discovery for multiple postfix instances
 
 use strict;
@@ -20,6 +20,7 @@ my %opt;
 my $postfix_config_default = '/etc/postfix/';
 my $postfix_config_master = '';
 # process variables
+my $skip_master = 0;
 my @row = ();
 my @syslog_names = ();
 my $syslog_name;
@@ -31,12 +32,14 @@ my $msg;
 # command line options
 $result = GetOptions(\%opt,
 	'config|c=s' => \$postfix_config_master,
+	'skip-master' => \$skip_master,
 	'h|help|?' # just help
 ) || exit 1;
 
 if ($opt{'help'}) {
 	print "HELP MESSAGE:\n";
 	print "-c|--config: override default location for postfix config (/etc/postfix)\n";
+	print "--skip-master: do not add the master into the return json string\n";
 	exit 1;
 }
 
@@ -68,24 +71,28 @@ if ($msg =~ /yes/i) {
 		# 1: group name (ignore)
 		# 2: enabled (y/n)
 		# 3: config folder
-		# get the syslog_name/multi_instance_name based on the config folder for all the entries
-		$postfix_config = $row[3];
-		$syslog_name = `/usr/sbin/postconf -c $postfix_config -h syslog_name 2>/dev/null`;
-		chomp $syslog_name;
-		if ($syslog_name =~ /^\$\{/) {
-			# if we have multi instance enabled and we have a multi_instance_name, use this, else fall back to syslog name
-			$multi_instance_syslog_name = `/usr/sbin/postconf -c $postfix_config -h multi_instance_name 2>/dev/null`;
-			chomp $multi_instance_syslog_name;
-			if ($multi_instance_syslog_name) {
-				$syslog_name = $multi_instance_syslog_name;
-			} else {
-				# syslogname can be dynamic set with ${, if this is the case split with : and get last part, strip out any {} left over
-				# sample: ${multi_instance_name?{$multi_instance_name}:{postfix}}
-				$syslog_name = (split(/:/, $syslog_name))[1];
-				$syslog_name =~ s/[\{\}]//g;
+		if (($row[0] eq '-' && !$skip_master) || $row[0] ne '-') {
+			# get the syslog_name/multi_instance_name based on the config folder for all the entries
+			$postfix_config = $row[3];
+			$syslog_name = `/usr/sbin/postconf -c $postfix_config -h syslog_name 2>/dev/null`;
+			chomp $syslog_name;
+			if ($syslog_name =~ /^\$\{/) {
+				# if we have multi instance enabled and we have a multi_instance_name, use this, else fall back to syslog name
+				$multi_instance_syslog_name = `/usr/sbin/postconf -c $postfix_config -h multi_instance_name 2>/dev/null`;
+				chomp $multi_instance_syslog_name;
+				if ($multi_instance_syslog_name) {
+					$syslog_name = $multi_instance_syslog_name;
+				} else {
+					# syslogname can be dynamic set with ${, if this is the case split with : and get last part, strip out any {} left over
+					# sample: ${multi_instance_name?{$multi_instance_name}:{postfix}}
+					$syslog_name = (split(/:/, $syslog_name))[1];
+					$syslog_name =~ s/[\{\}]//g;
+				}
+			}
+			if ($syslog_name) {
+				push(@syslog_names, {'{#SYSLOG_NAME}' => $syslog_name});
 			}
 		}
-		push(@syslog_names, {'#syslog_name' => $syslog_name});
 	}
 }
 if (@syslog_names) {

@@ -2,7 +2,7 @@
 
 # AUTHOR: Clemens Schwaighofer
 # DATE  : 2019/2/20
-# UPDATE: 2019/2/21
+# UPDATE: 2019/2/22
 # DESC  : detailed postfix queue/delivery data monitoring
 #         * checks spool folder for the following counts
 #           - maildrop
@@ -48,11 +48,13 @@ my $mail_log;
 my $logtail_storage = '/var/local/zabbix/zabbix-postfix.logtail';
 my $state_folder = '/var/local/zabbix/';
 my $state_file = $state_folder.'zabbix-postfix.state';
+my $json_tmp_file = $state_folder.'zabbix-postfix.tmp.json';
 my $syslog_name;
 my $syslog_name_regex;
 my $queue_directory;
 my $value_target_all = 'all';
 my $value_target;
+my $logtail_prefix; # possible sudo prefix for logtail
 # for allt he settings
 my @postfix_order = ();
 my %postfix_settings = ();
@@ -96,6 +98,7 @@ my $msg;
 my $value;
 my $jhash;
 my $found = 0;
+my $STATE;
 # values interim
 my %volumes_per_queue_id = ();
 my $serialized_volumes_queue;
@@ -114,20 +117,20 @@ sub init_values
 	my ($prefix) = @_;
 	# initialize the values hash
 	foreach my $_val (@master_values) {
-		$values->{$prefix.'_'.$_val} = 0;
+		$values->{$prefix}->{$_val} = 0;
 		if ($_val eq 'deferred') {
 			foreach my $__val (@deferred_order) {
-				$values->{$prefix.'_'.$_val.'_'.$__val} = 0;
+				$values->{$prefix}->{$_val.'_'.$__val} = 0;
 			}
 		}
 		if ($_val eq 'bounce') {
 			foreach my $__val (@bounce_order) {
-				$values->{$prefix.'_'.$_val.'_'.$__val} = 0;
+				$values->{$prefix}->{$_val.'_'.$__val} = 0;
 			}
 		}
 		if ($_val eq 'reject') {
 			foreach my $__val (@reject_order) {
-				$values->{$prefix.'_'.$_val.'_'.$__val} = 0;
+				$values->{$prefix}->{$_val.'_'.$__val} = 0;
 			}
 		}
 	}
@@ -253,7 +256,7 @@ if ($msg =~ /yes/i) {
 	$msg=`/usr/sbin/postconf -c $postfix_config_master -h multi_instance_directories 2>/dev/null`;
 	chomp $msg;
 	# split them up, we need that for any further check below
-	my @multi_instance_postfix_configs = split(/ /, $msg);
+	my @multi_instance_postfix_configs = split(/\s+/, $msg);
 	foreach my $multi_instance_postfix_config (@multi_instance_postfix_configs) {
 		# get syslog prefix name
 		my $multi_instance_syslog_name = get_syslog_name($multi_instance_postfix_config);
@@ -283,14 +286,14 @@ if ($msg =~ /yes/i) {
 foreach my $_syslog_name (@postfix_order) {
 	$queue_directory = $postfix_settings{$_syslog_name}{'queue_directory'};
 	foreach my $queue_folder (@queue_folders) {
-		my $_queue_folder = $queue_directory.'/'.$queue_folder;
+		my $_queue_folder = $queue_directory.'/'.$queue_folder.'/';
 		if (-d $_queue_folder) {
 			$value = `sudo find $_queue_folder -type f | wc -l`;
 			chomp $value;
 			# write values
-			$values->{$value_target_all.'_'.$queue_folder} = $value;
+			$values->{$value_target_all}->{$queue_folder} = $value;
 			if ($multi_instance_enabled) {
-				$values->{$_syslog_name.'_'.$queue_folder} = $value;
+				$values->{$_syslog_name}->{$queue_folder} = $value;
 			}
 		}
 	}
@@ -306,27 +309,27 @@ foreach my $_syslog_name (@postfix_order) {
 		chomp $_;
 		$jhash = decode_json($_);
 		# size and message count
-		$values->{$value_target_all.'_queue_size'} += $jhash->{'message_size'};
-		$values->{$value_target_all.'_queue_messages'} ++;
+		$values->{$value_target_all}->{'queue_size'} += $jhash->{'message_size'};
+		$values->{$value_target_all}->{'queue_messages'} ++;
 		if ($multi_instance_enabled) {
-			$values->{$_syslog_name.'_queue_size'} += $jhash->{'message_size'};
-			$values->{$_syslog_name.'_queue_messages'} ++;
+			$values->{$_syslog_name}->{'queue_size'} += $jhash->{'message_size'};
+			$values->{$_syslog_name}->{'queue_messages'} ++;
 		}
 		# if queue is deferred, count errors, if active or hold do only normal count
 		if ($jhash->{'queue_name'} eq 'active') {
-			$values->{$value_target_all.'_active'} ++;
+			$values->{$value_target_all}->{'active'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$_syslog_name.'_active'} ++;
+				$values->{$_syslog_name}->{'active'} ++;
 			}
 		} elsif ($jhash->{'queue_name'} eq 'hold') {
-			$values->{$value_target_all.'_hold'} ++;
+			$values->{$value_target_all}->{'hold'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$_syslog_name.'_hold'} ++;
+				$values->{$_syslog_name}->{'hold'} ++;
 			}
 		} elsif ($jhash->{'queue_name'} eq 'deferred') {
-			$values->{$value_target_all.'_deferred'} ++;
+			$values->{$value_target_all}->{'deferred'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$_syslog_name.'_deferred'} ++;
+				$values->{$_syslog_name}->{'deferred'} ++;
 			}
 			# detailed deferred count
 			foreach my $recipient (@{$jhash->{'recipients'}}) {
@@ -334,18 +337,18 @@ foreach my $_syslog_name (@postfix_order) {
 				# match up any error reason here
 				foreach my $deferred_key (@deferred_order) {
 					if ($deferred_details{$deferred_key} && $recipient->{'delay_reason'} =~ $deferred_details{$deferred_key}) {
-						$values->{$value_target_all.'_deferred_'.$deferred_key} ++;
+						$values->{$value_target_all}->{'deferred_'.$deferred_key} ++;
 						if ($multi_instance_enabled) {
-							$values->{$_syslog_name.'_deferred_'.$deferred_key} ++;
+							$values->{$_syslog_name}->{'deferred_'.$deferred_key} ++;
 						}
 						$found = 1;
 						last; # exit the loop
 					}
 				}
 				if (!$found) {
-					$values->{$value_target_all.'_deferred_other'} ++;
+					$values->{$value_target_all}->{'deferred_other'} ++;
 					if ($multi_instance_enabled) {
-						$values->{$_syslog_name.'_deferred_other'} ++;
+						$values->{$_syslog_name}->{'deferred_other'} ++;
 					}
 				}
 			}
@@ -382,8 +385,12 @@ if (-f $state_file) {
 }
 # regex sub part build for syslog_name
 $syslog_name_regex = join('|', @postfix_order);
+# check file mail log file is readable, if not try sudo for logtail
+if (! -r $mail_log) {
+	$logtail_prefix = 'sudo ';
+}
 # read log file
-open(FH, '/usr/sbin/logtail -f '.$mail_log.' -o '.$logtail_storage.' |') || die ("Cannot open $mail_log\n");
+open(FH, $logtail_prefix.'/usr/sbin/logtail -f '.$mail_log.' -o '.$logtail_storage.' |') || die ("Cannot open $mail_log\n");
 while (<FH>) {
 	chomp;
 	# find size [Feb 26 10:07:33 tako postfix-pc214/qmgr[60721]: 37F3A4C131C: from=<mailingtool@mailing-tool.tequila.jp>, size=12204, nrcpt=1 (queue active)]
@@ -400,24 +407,24 @@ while (<FH>) {
 		# actaul sent data -> count up delivered volume
 		$value_target = $1;
 		if (exists($volumes_per_queue_id{$2})) {
-			$values->{$value_target_all.'_delivered_volume'} += $volumes_per_queue_id{$2}->{size};
+			$values->{$value_target_all}->{'delivered_volume'} += $volumes_per_queue_id{$2}->{size};
 			if ($multi_instance_enabled) {
-				$values->{$value_target.'_delivered_volume'} += $volumes_per_queue_id{$2}->{size};
+				$values->{$value_target}->{'delivered_volume'} += $volumes_per_queue_id{$2}->{size};
 			}
 			$volumes_per_queue_id{$2}->{timestamp} = time;
 			# in case of multiple deliverey of same mail, we keep the data
 		}
 		# sent ok
-		$values->{$value_target_all.'_sent'} ++;
+		$values->{$value_target_all}->{'sent'} ++;
 		if ($multi_instance_enabled) {
-			$values->{$value_target.'_sent'} ++;
+			$values->{$value_target}->{'sent'} ++;
 		}
 	} elsif ($_ =~ /($syslog_name_regex)\/smtp.*: ([0-9A-Za-z]{10,}): to=.*, dsn=(.*), status=bounced \((.*)\)/) {
 		# bounced
 		$value_target = $1;
-		$values->{$value_target_all.'_bounce'} ++;
+		$values->{$value_target_all}->{'bounce'} ++;
 		if ($multi_instance_enabled) {
-			$values->{$value_target.'_bounce'} ++;
+			$values->{$value_target}->{'bounce'} ++;
 		}
 		# bounced detail logging (error number)
 		# 1. 550 (invalid user)
@@ -432,18 +439,18 @@ while (<FH>) {
 		# match up any error reason here
 		foreach my $bounce_key (@bounce_order) {
 			if ($bounce_details{$bounce_key} && $msg =~ $bounce_details{$bounce_key}) {
-				$values->{$value_target_all.'_bounce_'.$bounce_key} ++;
+				$values->{$value_target_all}->{'bounce_'.$bounce_key} ++;
 				if ($multi_instance_enabled) {
-					$values->{$value_target.'_bounce_'.$bounce_key} ++;
+					$values->{$value_target}->{'bounce_'.$bounce_key} ++;
 				}
 				$found = 1;
 				last; # exit the loop
 			}
 		}
 		if (!$found) {
-			$values->{$value_target_all.'_bounce_other'} ++;
+			$values->{$value_target_all}->{'bounce_other'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$value_target.'_bounce_other'} ++;
+				$values->{$value_target}->{'bounce_other'} ++;
 			}
 		}
 
@@ -454,9 +461,9 @@ while (<FH>) {
 	) {
 		$value_target = $1;
 		# rejected
-		$values->{$value_target_all.'_reject'} ++;
+		$values->{$value_target_all}->{'reject'} ++;
 		if ($multi_instance_enabled) {
-			$values->{$value_target.'_reject'} ++;
+			$values->{$value_target}->{'reject'} ++;
 		}
 		# reject detail
 		# 454: relay access denied
@@ -464,27 +471,27 @@ while (<FH>) {
 		# other: anything else
 		$msg = $2;
 		if ($msg eq '454') {
-			$values->{$value_target_all.'_reject_454norelay'} ++;
+			$values->{$value_target_all}->{'reject_454norelay'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$value_target.'_reject_454norelay'} ++;
+				$values->{$value_target}->{'reject_454norelay'} ++;
 			}
 		} elsif ($msg eq '550') {
-			$values->{$value_target_all.'_reject_550nouser'} ++;
+			$values->{$value_target_all}->{'reject_550nouser'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$value_target.'_reject_550nouser'} ++;
+				$values->{$value_target}->{'reject_550nouser'} ++;
 			}
 		} else {
-			$values->{$value_target_all.'_reject_other'} ++;
+			$values->{$value_target_all}->{'reject_other'} ++;
 			if ($multi_instance_enabled) {
-				$values->{$value_target.'_reject_other'} ++;
+				$values->{$value_target}->{'reject_other'} ++;
 			}
 		}
 	} elsif ($_ =~ /($syslog_name_regex)\/qmgr.*: ([0-9A-Fa-z]{10,}): from=.*, status=expired/) {
 		$value_target = $1;
 		# expired
-		$values->{$value_target_all.'_expired'} ++;
+		$values->{$value_target_all}->{'expired'} ++;
 		if ($multi_instance_enabled) {
-			$values->{$value_target.'_expired'} ++;
+			$values->{$value_target}->{'expired'} ++;
 		}
 	}
 	# error details for bounce/reject others, must have been not in a size, sent or expired group
@@ -504,9 +511,10 @@ delete(@volumes_per_queue_id{@expired_queue_ids});
 # write left over ids to serialzied data file
 $serialized_volumes_queue = join(" ", map { sprintf("%s=%s", $_, sprintf("%d:%d", $volumes_per_queue_id{$_}->{size}, $volumes_per_queue_id{$_}->{timestamp})) } keys %volumes_per_queue_id);
 # write to temp file
-my $STATE = File::Temp->new(DIR => $state_folder, UNLINK => 0);
+$STATE = File::Temp->new(DIR => $state_folder, UNLINK => 0);
 # write to state file
 print $STATE $serialized_volumes_queue;
+close $STATE;
 # rename temp file to live file
 rename($STATE->filename, $state_file);
 # remove state/logtail position files if called with test
@@ -521,10 +529,20 @@ if ($test) {
 # debug or live output
 if ($debug) {
 	foreach my $key (sort keys %$values) {
-		print "$key: ".$values->{$key}."\n";
+		foreach my $_key (sort keys %{$values->{$key}}) {
+			print "[$key] $_key: ".$values->{$key}->{$_key}."\n";
+		}
 	}
 } else {
-	print encode_json($values);
+	my $_json_string = encode_json($values);
+	# write file to the state directory if we have multiple hosts enabled
+	if ($multi_instance_enabled) {
+		$STATE = File::Temp->new(DIR => $state_folder, UNLINK => 0);
+		print $STATE $_json_string;
+		close $STATE;
+		rename($STATE->filename, $json_tmp_file);
+	}
+	print $_json_string;
 }
 # ###########################
 
