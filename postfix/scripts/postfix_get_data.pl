@@ -97,7 +97,12 @@ my %bounce_details = (
 );
 my @reject_order = ('454norelay', '550nouser');
 # COMBINED BASE
-my @master_values = ('deferred', 'deferred_other', 'active', 'hold', 'queue_messages', 'queue_size', 'maildrop', 'incoming', 'corrupt', 'sent', 'bounce', 'bounce_other', 'reject', 'reject_other', 'expired', 'delivered_volume');
+my %master_values_list = (
+	'log' => ['sent', 'bounce', 'bounce_other', 'reject', 'reject_other', 'expired', 'delivered_volume'],
+	'spool' => ['deferred', 'active', 'maildrop', 'incoming', 'corrupt', 'hold'],
+	'queue' => ['deferred', 'deferred_other', 'active', 'hold', 'queue_messages', 'queue_size']
+);
+my @master_values = ();
 # parse strings
 my $msg;
 my $value;
@@ -243,6 +248,14 @@ if ($error) {
 
 # ###########################
 # [MASTER]
+# set master element list based on read source flag
+if ($read_source eq 'all') {
+	foreach my $_key (keys %master_values_list) {
+		push(@master_values,  @{$master_values_list{$_key}});
+	}
+} else {
+	push(@master_values, @{$master_values_list{$read_source}});
+}
 # set syslog name
 $syslog_name = get_syslog_name($postfix_config_master);
 if (!$syslog_name) {
