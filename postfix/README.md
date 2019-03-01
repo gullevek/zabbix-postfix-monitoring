@@ -178,6 +178,8 @@ There are two triggers. One that alerts if no process is found running under the
 
 Inherits the Postfix Simple and so all settings above need to be applied. No further changes are needed.
 
+Not that this template cannot check for each multi instance postfix running processes
+
 ## Checks
 
 This template checks for all detail programs that get spawned by postfix master process.

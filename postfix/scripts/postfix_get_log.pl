@@ -1,28 +1,9 @@
 #!/usr/bin/perl
 
-# NOTE
-# THIS IS DEPRECATED
-# USE:
-# postfix_get_spool.pl
-# postfix_get_queue.pl
-# postfix_get_log.pl
-#exit 0;
-
 # AUTHOR: Clemens Schwaighofer
 # DATE  : 2019/2/20
 # UPDATE: 2019/2/28
-# DESC  : detailed postfix queue/delivery data monitoring
-#         * checks spool folder for the following counts
-#           - maildrop
-#           - incoming
-#           - corrupt
-#         * checks mail queue for
-#           - deferred
-#           - active
-#           - hold
-#           - messages in queue (all)
-#           - kbyte size of mails in queue (all)
-#           - detail report on deferred
+# DESC  : sub process for the postfix.pl runner
 #         * checks log file for
 #           - sent OK
 #           - bounced
@@ -46,19 +27,18 @@ use constant queue_id_expiry => 6 * 3600;
 my %opt;
 my $result;
 my $error = 0;
-# postconf check command
-# my $postconf_command = '/usr/sbin/postconf -c #config# -h #confkey# 2>/dev/null';
 # general config vars
 my $postfix_config_default = '/etc/postfix';
 my $postfix_config_master = '';
 my $mail_log_default = '/var/log/mail.log';
 my $mail_log;
-my $logtail_storage = '/var/local/zabbix/zabbix-postfix.logtail';
+my $logtail_storage = '/var/local/zabbix/zabbix-postfix.get-log.logtail';
 my $state_folder = '/var/local/zabbix/';
-my $state_file = $state_folder.'zabbix-postfix.state';
-my $json_tmp_file = $state_folder.'zabbix-postfix.tmp.json';
+my $state_file = $state_folder.'zabbix-postfix.get-log.state';
+my $json_tmp_file = $state_folder.'zabbix-postfix.get-log.tmp.json';
 my $syslog_name;
 my $syslog_name_regex;
+my %syslog_regex = ();
 my $queue_directory;
 my $value_target_all = 'all';
 my $value_target;
@@ -68,27 +48,6 @@ my @postfix_order = ();
 my %postfix_settings = ();
 # option flags
 my $multi_instance_enabled = 0;
-my @queue_folders = ('maildrop', 'incoming', 'corrupt');
-my @deferred_order = ('tlsfailed', 'crefused', 'ctimeout', 'rtimeout', 'nohost', 'msrefused', 'noroute', 'lostc', 'ipblocked', 'err421', 'err450', 'err451', 'err452', 'err454', 'err4');
-my %deferred_details = (
-	'tlsfailed' => qr/Cannot start TLS/,
-	'crefused' => qr/Connection refused/,
-	'ctimeout' => qr/(Connection timed out|timed out while)/,
-	'rtimeout' => qr/read timeout/,
-	'nohost' => qr/Host (or domain name )?not found/,
-	'msrefused' => qr/server refused mail service/,
-	'noroute' => qr/No route to host/,
-	'lostc' => qr/lost connection with/,
-	'ipblocked' => qr/refused to talk to me: 554/, # 421 -> blocked ip
-	# sub detail
-	'err421' => qr/(refused to talk to me: 421|: 421(\ |\)|\-))/, # connection refused
-	'err450' => qr/: 450( |\-)/, # delivere warning (address rejected)
-	'err451' => qr/: 451( |\-)/, # temp error (eg gray listing with address rejected)
-	'err452' => qr/: 452( |\-)/, # over quota
-	'err454' => qr/: 454( |\-)/, # relay access denied
-	# error 4 catch all
-	'err4' => qr/said: 4/,
-);
 my @bounce_order = ('550invalid', '551noauth', '552toobig', '553nonascii', '554error', 'nullmx');
 my %bounce_details = (
 	'550invalid' => qr/said: 550( |\-)/,
@@ -99,11 +58,10 @@ my %bounce_details = (
 	'nullmx' => qr/ \(nullMX\)/,
 );
 my @reject_order = ('454norelay', '550nouser');
-my @master_values = ('deferred', 'deferred_other', 'active', 'maildrop', 'incoming', 'corrupt', 'hold', 'sent', 'bounce', 'bounce_other', 'reject', 'reject_other', 'expired', 'delivered_volume', 'queue_messages', 'queue_size');
+my @master_values = ('sent', 'bounce', 'bounce_other', 'reject', 'reject_other', 'expired', 'delivered_volume');
 # parse strings
 my $msg;
 my $value;
-my $jhash;
 my $found = 0;
 my $STATE;
 # values interim
@@ -125,11 +83,6 @@ sub init_values
 	# initialize the values hash
 	foreach my $_val (@master_values) {
 		$values->{$prefix}->{$_val} = 0;
-		if ($_val eq 'deferred') {
-			foreach my $__val (@deferred_order) {
-				$values->{$prefix}->{$_val.'_'.$__val} = 0;
-			}
-		}
 		if ($_val eq 'bounce') {
 			foreach my $__val (@bounce_order) {
 				$values->{$prefix}->{$_val.'_'.$__val} = 0;
@@ -253,11 +206,6 @@ if ($msg =~ /yes/i) {
 	# list the postmulti entries and get config folder and name and status
 	# [multi name] [group name] [active] [config folder]
 	# [TODO]
-	#open(FH, '/usr/sbin/postmulti -l|') || die ("Cannot open postmulti list\n");
-	#while (<FH>) {
-	#	chomp;
-	#}
-	# close(FH);
 	# get instance directories
 	$msg=`/usr/sbin/postconf -c $postfix_config_master -h multi_instance_directories 2>/dev/null`;
 	chomp $msg;
@@ -280,86 +228,6 @@ if ($msg =~ /yes/i) {
 			init_values($multi_instance_syslog_name);
 		}
 	}
-}
-# ###########################
-
-# ###########################
-# QUEUE DIRECTORY CONTENT COUNT
-# we need to check if we can access the queue directory as the user we are running
-# if if not, try sudo for find, if this is not set we skip the first part
-# THIS is not mandatory count, only for hold/maildrop/incoming
-foreach my $_syslog_name (@postfix_order) {
-	$queue_directory = $postfix_settings{$_syslog_name}{'queue_directory'};
-	foreach my $queue_folder (@queue_folders) {
-		my $_queue_folder = $queue_directory.'/'.$queue_folder.'/';
-		if (-d $_queue_folder) {
-			$value = `sudo find $_queue_folder -type f | wc -l`;
-			chomp $value;
-			# write values
-			$values->{$value_target_all}->{$queue_folder} += $value;
-			if ($multi_instance_enabled) {
-				$values->{$_syslog_name}->{$queue_folder} += $value;
-			}
-		}
-	}
-}
-# ###########################
-
-# ###########################
-# MAIL QUEUE COUNT AND SIZE [JSON]
-foreach my $_syslog_name (@postfix_order) {
-	my $postfix_config = $postfix_settings{$_syslog_name}{'config'};
-	open(FH, "/usr/sbin/postqueue -c $postfix_config -j|") || die ("Can't open postqueue handler: ".$!."\n");
-	while (<FH>) {
-		chomp $_;
-		$jhash = decode_json($_);
-		# size and message count
-		$values->{$value_target_all}->{'queue_size'} += $jhash->{'message_size'};
-		$values->{$value_target_all}->{'queue_messages'} ++;
-		if ($multi_instance_enabled) {
-			$values->{$_syslog_name}->{'queue_size'} += $jhash->{'message_size'};
-			$values->{$_syslog_name}->{'queue_messages'} ++;
-		}
-		# if queue is deferred, count errors, if active or hold do only normal count
-		if ($jhash->{'queue_name'} eq 'active') {
-			$values->{$value_target_all}->{'active'} ++;
-			if ($multi_instance_enabled) {
-				$values->{$_syslog_name}->{'active'} ++;
-			}
-		} elsif ($jhash->{'queue_name'} eq 'hold') {
-			$values->{$value_target_all}->{'hold'} ++;
-			if ($multi_instance_enabled) {
-				$values->{$_syslog_name}->{'hold'} ++;
-			}
-		} elsif ($jhash->{'queue_name'} eq 'deferred') {
-			$values->{$value_target_all}->{'deferred'} ++;
-			if ($multi_instance_enabled) {
-				$values->{$_syslog_name}->{'deferred'} ++;
-			}
-			# detailed deferred count
-			foreach my $recipient (@{$jhash->{'recipients'}}) {
-				$found = 0;
-				# match up any error reason here
-				foreach my $deferred_key (@deferred_order) {
-					if ($deferred_details{$deferred_key} && $recipient->{'delay_reason'} =~ $deferred_details{$deferred_key}) {
-						$values->{$value_target_all}->{'deferred_'.$deferred_key} ++;
-						if ($multi_instance_enabled) {
-							$values->{$_syslog_name}->{'deferred_'.$deferred_key} ++;
-						}
-						$found = 1;
-						last; # exit the loop
-					}
-				}
-				if (!$found) {
-					$values->{$value_target_all}->{'deferred_other'} ++;
-					if ($multi_instance_enabled) {
-						$values->{$_syslog_name}->{'deferred_other'} ++;
-					}
-				}
-			}
-		}
-	}
-	close(FH);
 }
 # ###########################
 
@@ -390,6 +258,17 @@ if (-f $state_file) {
 }
 # regex sub part build for syslog_name
 $syslog_name_regex = join('|', @postfix_order);
+# build all the regexes for matching
+%syslog_regex = (
+	'volume' => qr/($syslog_name_regex)\/qmgr.*: ([0-9A-Fa-z]{10,}): from=.*, size=(\d+)/,
+	'sent' => qr/($syslog_name_regex)\/smtp.*: ([0-9A-Za-z]{10,}): to=.*, status=sent/,
+	'bounced' => qr/($syslog_name_regex)\/smtp.*: ([0-9A-Za-z]{10,}): to=.*, dsn=(.*), status=bounced \((.*)\)/,
+	'reject_smtpd' => qr/($syslog_name_regex)\/smtpd.*reject: \S+ \S+ \S+ (\S+)/,
+	'reject_smtpd_proxy' => qr/($syslog_name_regex)\/smtpd.*proxy-reject: \S+ (\S+)/,
+	'reject_cleanup' => qr/($syslog_name_regex)\/cleanup.* reject: (\S+)/,
+	'reject_cleanup_milter' => qr/($syslog_name_regex)\/cleanup.* milter-reject: \S+ \S+ \S+ (\S+)/,
+	'expired' => qr/($syslog_name_regex)\/qmgr.*: ([0-9A-Fa-z]{10,}): from=.*, status=expired/
+);
 # check file mail log file is readable, if not try sudo for logtail
 if (! -r $mail_log) {
 	$logtail_prefix = 'sudo ';
@@ -399,7 +278,7 @@ open(FH, $logtail_prefix.'/usr/sbin/logtail -f '.$mail_log.' -o '.$logtail_stora
 while (<FH>) {
 	chomp;
 	# find size [Feb 26 10:07:33 tako postfix-pc214/qmgr[60721]: 37F3A4C131C: from=<mailingtool@mailing-tool.tequila.jp>, size=12204, nrcpt=1 (queue active)]
-	if ($_ =~ /($syslog_name_regex)\/qmgr.*: ([0-9A-Fa-z]{10,}): from=.*, size=(\d+)/) {
+	if ($_ =~ $syslog_regex{'volume'}) {
 		# need $1 & $2
 		if (not exists($volumes_per_queue_id{$2})) {
 			$volumes_per_queue_id{$2} = {
@@ -408,7 +287,7 @@ while (<FH>) {
 		}
 		# update/reset size
 		$volumes_per_queue_id{$2}->{size} = $3;
-	} elsif ($_ =~ /($syslog_name_regex)\/smtp.*: ([0-9A-Za-z]{10,}): to=.*, status=sent/) {
+	} elsif ($_ =~ $syslog_regex{'sent'}) {
 		# actaul sent data -> count up delivered volume
 		$value_target = $1;
 		if (exists($volumes_per_queue_id{$2})) {
@@ -424,7 +303,7 @@ while (<FH>) {
 		if ($multi_instance_enabled) {
 			$values->{$value_target}->{'sent'} ++;
 		}
-	} elsif ($_ =~ /($syslog_name_regex)\/smtp.*: ([0-9A-Za-z]{10,}): to=.*, dsn=(.*), status=bounced \((.*)\)/) {
+	} elsif ($_ =~ $syslog_regex{'bounced'}) {
 		# bounced
 		$value_target = $1;
 		$values->{$value_target_all}->{'bounce'} ++;
@@ -459,10 +338,10 @@ while (<FH>) {
 			}
 		}
 
-	} elsif ($_ =~ /($syslog_name_regex)\/smtpd.*reject: \S+ \S+ \S+ (\S+)/ ||
-		$_ =~ /($syslog_name_regex)\/smtpd.*proxy-reject: \S+ (\S+)/ ||
-		$_ =~ /($syslog_name_regex)\/cleanup.* reject: (\S+)/ ||
-		$_ =~ /($syslog_name_regex)\/cleanup.* milter-reject: \S+ \S+ \S+ (\S+)/
+	} elsif ($_ =~ $syslog_regex{'reject_smtpd'} ||
+		$_ =~ $syslog_regex{'reject_smtpd_proxy'} ||
+		$_ =~ $syslog_regex{'reject_cleanup'} ||
+		$_ =~ $syslog_regex{'reject_cleanup_milter'}
 	) {
 		$value_target = $1;
 		# rejected
@@ -491,7 +370,7 @@ while (<FH>) {
 				$values->{$value_target}->{'reject_other'} ++;
 			}
 		}
-	} elsif ($_ =~ /($syslog_name_regex)\/qmgr.*: ([0-9A-Fa-z]{10,}): from=.*, status=expired/) {
+	} elsif ($_ =~ $syslog_regex{'expired'}) {
 		$value_target = $1;
 		# expired
 		$values->{$value_target_all}->{'expired'} ++;

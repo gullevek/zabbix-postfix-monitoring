@@ -2,7 +2,7 @@
 
 # AUTHOR: Clemens Schwaighofer
 # DATE  : 2019/2/21
-# UPDATE: 2019/2/22
+# UPDATE: 2019/2/28
 # DESC  : discovery for multiple postfix instances
 
 use strict;

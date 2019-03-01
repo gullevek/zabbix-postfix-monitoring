@@ -2,7 +2,7 @@
 
 # AUTHOR: Clemens Schwaighofer
 # DATE  : 2019/2/25
-# UPDATE: 2019/2/25
+# UPDATE: 2019/2/28
 # DESC  : read running/not running status via postmulti for an instance
 
 use strict;
