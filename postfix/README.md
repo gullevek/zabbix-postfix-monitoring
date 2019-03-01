@@ -58,9 +58,11 @@ The following files will be stored there
 
 | File | Description |
 | ---- | ----------- |
-| zabbix-postfix.logtail | logtail position information |
-| zabbix-postfix.state | postfix sent email size temporary information |
-| zabbix-postfix.tmp.json | Postfix stats in JSON format are written to this file for reading in mult instance postfix installs |
+| zabbix-postfix.get-log.logtail | logtail position information |
+| zabbix-postfix.get-log.state | postfix sent email size temporary information |
+| zabbix-postfix.get-log.tmp.json | Postfix log stats in JSON format are written to this file for reading in multi instance postfix installs |
+| zabbix-postfix.get-queue.tmp.json | Postfix queue stats in JSON format are written to this file for reading in multi instance postfix installs |
+| zabbix-postfix.get-spool.tmp.json | Postfix spool stats in JSON format are written to this file for reading in multi instance postfix installs |
 
 ### File access
 
@@ -70,7 +72,7 @@ The following files will be acceessed
 | ------ | ---- |
 | Running check | [postfix spool]/run/master.pid |
 | Statistics | /var/log/[mail log] |
-| Statistcis | [postfix spool]/incoming|maildrop|corrupt/* |
+| Statistcis | [postfix spool]/incoming|maildrop|corrupt|deferred|active|hold/* |
 
 As most commands are run with sudo flag the following sudo entry is needed.
 in /etc/suders.d/zabbix
@@ -78,9 +80,12 @@ in /etc/suders.d/zabbix
 # for postfix running
 zabbix ALL = (ALL) NOPASSWD: /bin/cat /*/pid/master.pid
 # for postfix stats
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/deferred/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/active/*
 zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/maildrop/*
 zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/incoming/*
 zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/corrupt/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/hold/*
 ```
 
 The statistics script needs access to the mail.log file. The simplest way is to add zabbix to the adm user (in Debian)
@@ -106,6 +111,14 @@ zabbix ALL = (ALL) NOPASSWD: /usr/sbin/logtail -f /var/log/* -o *
 ```
 
 The script will try to fall back to the sudo style read in case all other options fail. In case the sudo style is used the zabbix-postfix.logtail file is owned by root.
+
+### Zabbix agent config
+
+On a very high load system the default script run time of 3 seconds might be too slow. In case of script timeouts the parameter
+```
+Timeout=30
+```
+can bet set to eg 30 seconds (the maximum value) in the /etc/zabbix/zabbix_agentd.conf to limit the possibility of timeouts
 
 ### Templates and Value Mapping
 
@@ -133,9 +146,13 @@ The following templates exists
 | File | Description |
 | ---- | ----------- |
 | postfix_running.pl | Checks the master PID file if the postfix is running with this PID |
-| postfix.pl | Collects all statistics data for single or multi instance |
-| postfix_multi_instance_data.pl | Collects only multi instance statistics from the temp json file |
+| postfix_get_data.pl | Collects all statistics data for single or multi instance |
+| postfix_multi_instance_get_data.pl | Collects only multi instance statistics from the temp json file |
 | postfix_multi_instance_discovery.pl | Discovers multi instance postfix |
+
+### UserParameter file
+
+The userparameter_postfix.conf file needs to be copied into the zabbix userparameter config folder usualy located in /etc/zabbix/zabbig_agentd.conf.d/
 
 # Template App Postfix Simple
 
@@ -221,8 +238,8 @@ The following macros are defined and need to be adapted
 
 The following files are used
 * postfix_multi_instance_discovery.pl
-* postfix.pl
-* postfix_multi_instance_data.pl
+* postfix_get_data.pl
+* postfix_multi_instance_get_data.pl
 
 ## Checks
 
