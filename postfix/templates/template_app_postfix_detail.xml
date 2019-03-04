@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>4.0</version>
-    <date>2019-03-04T02:38:20Z</date>
+    <date>2019-03-04T07:40:55Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -3637,7 +3637,7 @@
                             <type>18</type>
                             <snmp_community/>
                             <snmp_oid/>
-                            <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivial-rewrite.mem]</key>
+                            <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivialre_write.mem]</key>
                             <delay>0</delay>
                             <history>90d</history>
                             <trends>365d</trends>
@@ -3672,7 +3672,7 @@
                             <preprocessing>
                                 <step>
                                     <type>12</type>
-                                    <params>$.trivial-rewrite.mem</params>
+                                    <params>$.trivial_rewrite.mem</params>
                                 </step>
                                 <step>
                                     <type>1</type>
@@ -3708,7 +3708,7 @@
                             <type>18</type>
                             <snmp_community/>
                             <snmp_oid/>
-                            <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivial-rewrite.num]</key>
+                            <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivial_rewrite.num]</key>
                             <delay>0</delay>
                             <history>90d</history>
                             <trends>365d</trends>
@@ -3743,7 +3743,7 @@
                             <preprocessing>
                                 <step>
                                     <type>12</type>
-                                    <params>$.trivial-rewrite.num</params>
+                                    <params>$.trivial_rewrite.num</params>
                                 </step>
                             </preprocessing>
                             <jmx_endpoint/>
@@ -4220,7 +4220,7 @@
                                     <type>0</type>
                                     <item>
                                         <host>Template App Postfix Detail</host>
-                                        <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivial-rewrite.mem]</key>
+                                        <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivialre_write.mem]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -4420,7 +4420,7 @@
                                     <type>0</type>
                                     <item>
                                         <host>Template App Postfix Detail</host>
-                                        <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivial-rewrite.num]</key>
+                                        <key>postfix.process.multi_instance[{#SYSLOG_NAME}.trivial_rewrite.num]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>

@@ -72,6 +72,7 @@ if ($queue_dir) {
 		# split up to pid and process name
 		my ($_pid, $_process) = split(/\s+/, $_process_list);
 		chomp($_process);
+		$_process =~ s/\-/_/;
 		$processes->{$_process}->{'num'} ++;
 	}
 	# get memory (in KB)
@@ -80,11 +81,13 @@ if ($queue_dir) {
 	while (<FH>) {
 		chomp;
 		my ($_pid, $_process, $_mem) = split(/\s+/, $_);
+		$_process =~ s/\-/_/;
 		$processes->{$_process}->{'mem'} += $_mem;
 	}
 	close(FH);
 	# loop through default and fill missing with 0
 	foreach my $_process (@default_process_list) {
+		$_process =~ s/\-/_/;
 		if (!$processes->{$_process}->{'num'}) {
 			$processes->{$_process}->{'num'} = 0;
 			$processes->{$_process}->{'mem'} = 0;
