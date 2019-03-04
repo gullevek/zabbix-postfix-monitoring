@@ -145,7 +145,8 @@ The following templates exists
 
 | File | Description |
 | ---- | ----------- |
-| postfix_running.pl | Checks the master PID file if the postfix is running with this PID |
+| postfix_running.pl | Checks the master PID file if the postfix is running with this PID, also used for mult instance checks |
+| postfix_multi_instance_process_memory.pl | Per multi instance process and memory count |
 | postfix_get_data.pl | Collects all statistics data for single or multi instance |
 | postfix_multi_instance_get_data.pl | Collects only multi instance statistics from the temp json file |
 | postfix_multi_instance_discovery.pl | Discovers multi instance postfix |
@@ -195,7 +196,7 @@ There are two triggers. One that alerts if no process is found running under the
 
 Inherits the Postfix Simple and so all settings above need to be applied. No further changes are needed.
 
-Not that this template cannot check for each multi instance postfix running processes
+Not that this template also checks for multi instance postfix and sets up number of processes and memory used. Memory used is based on the VSZ (Virtual Memory Size) and this might be a bit off.
 
 ## Checks
 
@@ -216,7 +217,7 @@ This template checks for all detail programs that get spawned by postfix master 
 * Verify
 * Virtual
 
-It logs number for running processes and memory used
+It logs number for running processes and memory used for all postfixes and multi instance postfixes if running.
 
 # Template App Postfix Mail Statistics
 

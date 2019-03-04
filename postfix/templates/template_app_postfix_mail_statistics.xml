@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>4.0</version>
-    <date>2019-03-01T06:02:19Z</date>
+    <date>2019-03-04T02:40:41Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -2777,7 +2777,7 @@
             </items>
             <discovery_rules>
                 <discovery_rule>
-                    <name>Postfix multi instances list</name>
+                    <name>Postfix stats multi instances list</name>
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
@@ -2809,7 +2809,7 @@
                     <description/>
                     <item_prototypes>
                         <item_prototype>
-                            <name>JSON get [{#SYSLOG_NAME}]</name>
+                            <name>JSON get stats [{#SYSLOG_NAME}]</name>
                             <type>0</type>
                             <snmp_community/>
                             <snmp_oid/>
@@ -5119,7 +5119,7 @@
                             <preprocessing>
                                 <step>
                                     <type>12</type>
-                                    <params>$.queue_messages</params>
+                                    <params>$.queue_size</params>
                                 </step>
                             </preprocessing>
                             <jmx_endpoint/>

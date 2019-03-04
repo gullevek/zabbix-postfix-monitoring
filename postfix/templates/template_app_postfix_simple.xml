@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>4.0</version>
-    <date>2019-03-01T05:21:44Z</date>
+    <date>2019-03-04T02:40:27Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -22,7 +22,7 @@
                     <name>Memory</name>
                 </application>
                 <application>
-                    <name>Postfix General</name>
+                    <name>Postfix Memory</name>
                 </application>
                 <application>
                     <name>Postfix Running</name>
@@ -128,7 +128,7 @@
                             <name>Memory</name>
                         </application>
                         <application>
-                            <name>Postfix General</name>
+                            <name>Postfix Memory</name>
                         </application>
                     </applications>
                     <valuemap/>
@@ -187,7 +187,7 @@
                     <inventory_link>0</inventory_link>
                     <applications>
                         <application>
-                            <name>Postfix General</name>
+                            <name>Postfix Running</name>
                         </application>
                         <application>
                             <name>Processes</name>
