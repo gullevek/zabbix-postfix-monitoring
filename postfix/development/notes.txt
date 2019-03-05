@@ -1,0 +1,68 @@
+#################################################
+# Zabbix Postfix
+# Development Notes
+
+##### TODO #####
+
+##### TEST #####
+## Command Line
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_get_data.pl -r spool --debug --test"
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_get_data.pl -r queue --debug --test"
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_get_data.pl -r log --debug --test"
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_get_data.pl -r log --debug --test --cleanup"
+
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_multi_instance_get_data.pl -s postfix-pc211 --debug"
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_multi_instance_discovery.pl -c /etc/postfix"
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_running.pl -s -"
+su -l zabbix -s /bin/bash -c "/etc/zabbix/scripts/postfix_multi_instance_process_memory.pl -s -"
+
+## AGENT TEST
+# running
+zabbig_agentd -t postfix.running[/etc/zabbix/scripts/,-];
+zabbix_agentd -t postfix.running.multi_instance.discovery[/etc/zabbix/scripts/,/etc/postfix]
+# detail running
+zabbix_agentd -t postfix.process.json.multi_instance[/etc/zabbix/scripts/,postfix-kddi196]
+
+# discovory
+zabbix_agentd -t postfix.data.multi_instance.discovery[/etc/zabbix/scripts/,/etc/postfix]
+# data
+zabbix_agentd -t postfix.data.spool.json[/etc/zabbix/scripts/,/etc/postfix]
+zabbix_agentd -t postfix.data.queue.json[/etc/zabbix/scripts/,/etc/postfix]
+zabbix_agentd -t postfix.data.log.json[/etc/zabbix/scripts/,/etc/postfix,/var/log/mail.log]
+zabbix_agentd -t postfix.data.combined.json.multi_instance[/etc/zabbix/scripts/,postfix-master30]
+
+##### SETTINGS #####
+## SET IN ZABBIX MACRO
+{$POSTFIX_SCRIPT_PATH}
+{$POSTFIX_USER}
+{$POSTFIX_CONFIG}
+{$POSTFIX_LOG}
+
+##### NEW CREATION #####
+# all set on command line
+#################### ****** ####################
+## CREATE control dir
+mkdir /var/local/zabbix
+chown zabbix.zabbix /var/local/zabbix
+
+## SET in /etc/postfix/main.cf config:
+# must be set for zabbix monitoring
+alternate_config_directories = /etc/postfix
+
+## SET in /etc/groups
+# add zabbix user to group adm
+usermod -G adm zabbix
+
+## SET in /etc/sudoers.d/zabbix
+# for postfix running
+zabbix ALL = (ALL) NOPASSWD: /bin/cat /*/pid/master.pid
+# for postfix stats
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/deferred/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/active/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/maildrop/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/incoming/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/corrupt/*
+zabbix ALL = (ALL) NOPASSWD: /usr/bin/find /*/hold/*
+# if we can't add zabbix to a group that can read log files
+zabbix ALL = (ALL) NOPASSWD: /usr/sbin/logtail -f /var/log/* -o *
+#################### ****** ####################
