@@ -22,7 +22,7 @@ First get the pid of the postmaster process
 16686 ?        S      0:54 /usr/pgsql-9.4/bin/postmaster -D /var/lib/pgsql/9.4/data
 ```
 
-Then run the command with the pid (in the example it is *16686*)
+Then run the command with the pid (in the example it is **16686**)
 ```
 #> cat /proc/16686/status|grep "Name:"
 Name:   postmaster
@@ -30,4 +30,4 @@ Name:   postmaster
 
 Then set the value from the field _Name:_
 
-In the example it is *postmaster*
+In the example it is **postmaster**
