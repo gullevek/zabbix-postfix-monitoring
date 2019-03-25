@@ -1,7 +1,7 @@
 Postfix Monitoring for Zabbix
 =============================
 
-All templates are created for Zabbix 4.0 and test with Debian Postfix
+All templates are created for Zabbix 4.0 and test with Postfix 3.x
 
 There are three templates
 * Template App Postfix Simple
