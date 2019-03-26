@@ -56,6 +56,7 @@ my $queue_directory;
 my $value_target_all = 'all';
 my $value_target;
 my $logtail_prefix = ''; # possible sudo prefix for logtail
+my $postfix_version;
 # for all the settings
 my @postfix_order = ();
 my %postfix_settings = ();
@@ -275,6 +276,9 @@ $postfix_settings{$syslog_name} = {
 };
 # init all values
 init_values($value_target_all, $read_source);
+# get postfix version
+$postfix_version = `/usr/sbin/postconf -c $postfix_config_master -h mail_version 2>/dev/null`;
+chomp $postfix_version;
 # ###########################
 
 # ###########################
@@ -341,55 +345,106 @@ if ($read_source eq 'spool') {
 # ###########################
 # MAIL QUEUE COUNT AND SIZE [JSON]
 if ($read_source eq 'queue') {
+	my $row_ok = 0;
+	my $row_count = 0;
+	my $postqueue_option = '-j';
+	# check if postqueue has flag -j (Version >=3.1)
+	if ($postfix_version =~ /^[12]\./ || $postfix_version =~ /^3\.0/) {
+		$postqueue_option = '-p';
+	}
+	# if not we have to use the old read style
 	foreach my $_syslog_name (@postfix_order) {
 		my $postfix_config = $postfix_settings{$_syslog_name}{'config'};
-		open(FH, "/usr/sbin/postqueue -c $postfix_config -j|") || die ("Can't open postqueue handler: ".$!."\n");
+		open(FH, "/usr/sbin/postqueue -c $postfix_config $postqueue_option|") || die ("Can't open postqueue handler: ".$!."\n");
 		while (<FH>) {
 			chomp $_;
-			$jhash = decode_json($_);
-			# size and message count
-			$values->{$value_target_all}->{'queue_size'} += $jhash->{'message_size'};
-			$values->{$value_target_all}->{'queue_messages'} ++;
-			if ($multi_instance_enabled) {
-				$values->{$_syslog_name}->{'queue_size'} += $jhash->{'message_size'};
-				$values->{$_syslog_name}->{'queue_messages'} ++;
+			if ($postqueue_option eq '-j') {
+				$jhash = decode_json($_);
+				# for json output, it is alwys OK
+				$row_ok = 1;
+			} else {
+				# old style is n lines and empty line
+				# first line is ID + active/hold/deferred status and size
+				if ($row_count == 0) {
+					if ($_ =~ /^[0-9A-Fa-z]{10,}([\*\!])?\s+(\d+)/) {
+						# * = active, ! = hold, empty = deferred
+						if ($1 eq '*') {
+							$jhash->{'queue_name'} = 'active';
+						} elsif ($1 eq '!') {
+							$jhash->{'queue_name'} = 'hold';
+						} else {
+							$jhash->{'queue_name'} = 'deferred';
+						}
+						# the mail size
+						$jhash->{'message_size'} = $2;
+					}
+				} else {
+					# if it is deferred add new entry
+					if ($jhash->{'queue_name'} eq 'deferred') {
+						# if not EMPTY line and not a line with leading spaces and any email like address
+						if (length($_) > 0 && $_ !~ /^\s+.*@.*/) {
+							# store the deferred reason here
+							push(@{$jhash->{'recipients'}}, {'delay_reason' => $_});
+						}
+					}
+				}
+				$row_count ++;
+				# if the line is empty, we reached end of record, process the data
+				if (!length($_)) {
+					$row_ok = 1;
+				}
 			}
-			# if queue is deferred, count errors, if active or hold do only normal count
-			if ($jhash->{'queue_name'} eq 'active') {
-				$values->{$value_target_all}->{'active'} ++;
+			if ($row_ok) {
+				# size and message count
+				$values->{$value_target_all}->{'queue_size'} += $jhash->{'message_size'};
+				$values->{$value_target_all}->{'queue_messages'} ++;
 				if ($multi_instance_enabled) {
-					$values->{$_syslog_name}->{'active'} ++;
+					$values->{$_syslog_name}->{'queue_size'} += $jhash->{'message_size'};
+					$values->{$_syslog_name}->{'queue_messages'} ++;
 				}
-			} elsif ($jhash->{'queue_name'} eq 'hold') {
-				$values->{$value_target_all}->{'hold'} ++;
-				if ($multi_instance_enabled) {
-					$values->{$_syslog_name}->{'hold'} ++;
-				}
-			} elsif ($jhash->{'queue_name'} eq 'deferred') {
-				$values->{$value_target_all}->{'deferred'} ++;
-				if ($multi_instance_enabled) {
-					$values->{$_syslog_name}->{'deferred'} ++;
-				}
-				# detailed deferred count
-				foreach my $recipient (@{$jhash->{'recipients'}}) {
-					$found = 0;
-					# match up any error reason here
-					foreach my $deferred_key (@deferred_order) {
-						if ($deferred_details{$deferred_key} && $recipient->{'delay_reason'} =~ $deferred_details{$deferred_key}) {
-							$values->{$value_target_all}->{'deferred_'.$deferred_key} ++;
-							if ($multi_instance_enabled) {
-								$values->{$_syslog_name}->{'deferred_'.$deferred_key} ++;
+				# if queue is deferred, count errors, if active or hold do only normal count
+				if ($jhash->{'queue_name'} eq 'active') {
+					$values->{$value_target_all}->{'active'} ++;
+					if ($multi_instance_enabled) {
+						$values->{$_syslog_name}->{'active'} ++;
+					}
+				} elsif ($jhash->{'queue_name'} eq 'hold') {
+					$values->{$value_target_all}->{'hold'} ++;
+					if ($multi_instance_enabled) {
+						$values->{$_syslog_name}->{'hold'} ++;
+					}
+				} elsif ($jhash->{'queue_name'} eq 'deferred') {
+					$values->{$value_target_all}->{'deferred'} ++;
+					if ($multi_instance_enabled) {
+						$values->{$_syslog_name}->{'deferred'} ++;
+					}
+					# detailed deferred count
+					foreach my $recipient (@{$jhash->{'recipients'}}) {
+						$found = 0;
+						# match up any error reason here
+						foreach my $deferred_key (@deferred_order) {
+							if ($deferred_details{$deferred_key} && $recipient->{'delay_reason'} =~ $deferred_details{$deferred_key}) {
+								$values->{$value_target_all}->{'deferred_'.$deferred_key} ++;
+								if ($multi_instance_enabled) {
+									$values->{$_syslog_name}->{'deferred_'.$deferred_key} ++;
+								}
+								$found = 1;
+								last; # exit the loop
 							}
-							$found = 1;
-							last; # exit the loop
+						}
+						if (!$found) {
+							$values->{$value_target_all}->{'deferred_other'} ++;
+							if ($multi_instance_enabled) {
+								$values->{$_syslog_name}->{'deferred_other'} ++;
+							}
 						}
 					}
-					if (!$found) {
-						$values->{$value_target_all}->{'deferred_other'} ++;
-						if ($multi_instance_enabled) {
-							$values->{$_syslog_name}->{'deferred_other'} ++;
-						}
-					}
+				}
+				# reset row ok and row count and the jhash for the old style print
+				if ($postqueue_option eq '-p') {
+					$row_ok = 0;
+					$row_count = 0;
+					$jhash = ();
 				}
 			}
 		}

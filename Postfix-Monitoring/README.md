@@ -1,7 +1,7 @@
 Postfix Monitoring for Zabbix
 =============================
 
-All templates are created for Zabbix 4.0 and test with Postfix 3.x
+All templates are created for Zabbix 4.0 and test with Postfix 2.x and 3.x
 
 There are three templates
 * Template App Postfix Simple
@@ -12,7 +12,7 @@ There are three templates
 
 ### Software needed
 
-All discovery scripts return JSON and so the perl JSON module needs to be installed. In debian
+All discovery scripts return JSON and so the perl JSON module needs to be installed. In Debian
 ```
 apt install libjson-perl
 ```
