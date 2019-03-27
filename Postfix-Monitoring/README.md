@@ -29,6 +29,10 @@ For RPM based it is in the package logcheck
 ```
 yum install logcheck
 ```
+OR on Amazon Linux installs
+```
+yum install --enablerepo=epel logcheck
+```
 
 ### Postfix setup
 

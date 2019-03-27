@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>4.0</version>
-    <date>2019-03-04T02:40:41Z</date>
+    <date>2019-03-27T07:52:31Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -28,7 +28,7 @@
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
-                    <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                    <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     <delay>1m</delay>
                     <history>1d</history>
                     <trends>0</trends>
@@ -329,7 +329,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -395,7 +395,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -461,7 +461,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -527,7 +527,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -593,7 +593,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -659,7 +659,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -725,7 +725,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -791,7 +791,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2045,7 +2045,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2111,7 +2111,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2507,7 +2507,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2573,7 +2573,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2639,7 +2639,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2705,7 +2705,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
                 <item>
@@ -2771,7 +2771,7 @@
                     <verify_peer>0</verify_peer>
                     <verify_host>0</verify_host>
                     <master_item>
-                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG}]</key>
+                        <key>postfix.data.log.json[{$POSTFIX_SCRIPT_PATH},{$POSTFIX_CONFIG},{$POSTFIX_LOG}]</key>
                     </master_item>
                 </item>
             </items>
